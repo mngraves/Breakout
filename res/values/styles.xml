@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="mainLayout">
+    	<item name="android:layout_width">fill_parent</item>
+    	<item name="android:layout_height">fill_parent</item>
+    	<item name="android:orientation">vertical</item>
+	</style>
+    <style name="textView" parent="@android:style/TextAppearance">
+    	<item name="android:layout_width">fill_parent</item>
+    	<item name="android:layout_height">wrap_content</item>
+    </style>
+    <style name="button">
+    	<item name="android:layout_width">fill_parent</item>
+    	<item name="android:layout_height">wrap_content</item>
+    </style>
+</resources>
