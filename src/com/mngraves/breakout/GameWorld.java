@@ -10,6 +10,7 @@ import org.jbox2d.dynamics.World;
 
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Bundle;
 import android.util.Log;
 
 /**
@@ -72,7 +73,7 @@ public final class GameWorld {
         
         createTopBox();
         createRightBox();
-        createBottomBox();
+        //createBottomBox();
         createLeftBox();
     }
     
@@ -110,6 +111,29 @@ public final class GameWorld {
         PolygonDef leftShapeDef = new PolygonDef();
         leftShapeDef.setAsBox((float)2.1, mScreenHeight*(float)2.0);
         leftBody.createShape(leftShapeDef);    	
+    }
+    
+    public void addBox(Bundle data){
+    	float width = ((float)data.getInt(GamePlayActivity.KEY_WIDTH)/(float)PIXELS_IN_METER)/(float)2.0;
+    	float height = ((float)data.getInt(GamePlayActivity.KEY_HEIGHT)/(float)PIXELS_IN_METER)/(float)2.0;
+    	float locX = xToBox(data.getInt(GamePlayActivity.KEY_X) + Math.round(data.getInt(GamePlayActivity.KEY_WIDTH)/2));
+    	float locY = yToBox(data.getInt(GamePlayActivity.KEY_Y) + Math.round(data.getInt(GamePlayActivity.KEY_HEIGHT)/2));
+    	//locX += (locX > 0) ? (width/2) : -(width/2);
+    	//locY += (locY > 0) ? (height/2) : -(height/2);
+    	
+    	Log.d(TAG, "width: " + width + ", height: " + height + ", x: " + locX + ", y: " + locY);
+    	
+    	BodyDef bodyDef = new BodyDef();
+        bodyDef.position.set(new Vec2(locX, locY));
+        Body body = mWorld.createBody(bodyDef);
+        PolygonDef shapeDef = new PolygonDef();
+        shapeDef.setAsBox(width, height);
+        body.createShape(shapeDef);
+        body.setUserData(data);
+    }
+    
+    public Body getBodyListHead(){
+    	return mWorld.getBodyList();
     }
     
     /**
@@ -224,5 +248,16 @@ public final class GameWorld {
     		//Log.d(TAG, "Sending ball position: " + BoxToX(pos.x) + ", " + BoxToY(pos.y));
     	}
     	return point;
+    }
+    
+    /**
+     * Indicates whether or not the ball is still in play
+     * @return true if the ball is still in play
+     */
+    public boolean isBallInPlay(){
+    	if(mBall != null && !mBall.isSleeping() && !mBall.isFrozen()){
+    		return true;
+    	}
+    	return false;
     }
 }

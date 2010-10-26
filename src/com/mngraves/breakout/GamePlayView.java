@@ -1,11 +1,14 @@
 package com.mngraves.breakout;
 
+import org.jbox2d.dynamics.Body;
+
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -39,8 +42,9 @@ public class GamePlayView extends View implements OnTouchListener{
 		float x = event.getRawX();
 		float y = event.getRawY();
 		
-		mGameWorld.setBall((int)x, (int)y);
-		
+		if(!mGameWorld.isBallInPlay()){
+			mGameWorld.setBall(GamePlayActivity.BALL_START_X, GamePlayActivity.BALL_START_Y);
+		}
 		return false;
 	}
 
@@ -55,6 +59,20 @@ public class GamePlayView extends View implements OnTouchListener{
 		mPaint.setColor(BALL_COLOR);
 		canvas.drawCircle(ballPoint.x, ballPoint.y, GamePlayActivity.NORMAL_BALL_RADIUS, mPaint);
 		
+		Body curBody = world.getBodyListHead();
+		while(curBody != null){
+			Bundle bodyData = (Bundle)curBody.getUserData();
+			if(bodyData != null){
+				//Log.d(TAG, "drawing body...");
+				int x = bodyData.getInt(GamePlayActivity.KEY_X);
+				int y = bodyData.getInt(GamePlayActivity.KEY_Y);
+				int width = bodyData.getInt(GamePlayActivity.KEY_WIDTH);
+				int height = bodyData.getInt(GamePlayActivity.KEY_HEIGHT);
+				Rect bounds = new Rect(x, y, x+width, y+height);
+				canvas.drawRect(bounds, mPaint);
+			}
+			curBody = curBody.getNext();
+		}
 	}
 	
 	private void setScreenBounds(){
