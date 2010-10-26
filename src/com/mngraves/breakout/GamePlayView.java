@@ -1,4 +1,4 @@
-package com.mngraves.breakaway;
+package com.mngraves.breakout;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -6,11 +6,15 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.util.Log;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
+import android.view.WindowManager;
 
 public class GamePlayView extends View implements OnTouchListener{
+	public static final String TAG = "Game Play View";
 	private Context mContext;
 	private Paint mPaint;
 	private Rect mScreenBounds;
@@ -48,14 +52,25 @@ public class GamePlayView extends View implements OnTouchListener{
 		
 		canvas.drawColor(BACKGROUND_COLOR);
 		
-		
 		mPaint.setColor(BALL_COLOR);
 		canvas.drawCircle(ballPoint.x, ballPoint.y, GamePlayActivity.NORMAL_BALL_RADIUS, mPaint);
 		
 	}
 	
 	private void setScreenBounds(){
-		mScreenBounds = new Rect(0, 0, getRight(), getBottom());
+		Display display = ((WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay(); 
+		
+		Log.d(TAG, "right: " + display.getWidth());
+		Log.d(TAG, "bottom: " + display.getHeight());
+		
+		mScreenBounds = new Rect(0, 0, display.getWidth(), display.getHeight());
+	}
+	
+	public Rect getScreenBounds(){
+		if(mScreenBounds == null){
+			setScreenBounds();
+		}
+		return mScreenBounds;
 	}
 
 }

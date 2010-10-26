@@ -1,4 +1,4 @@
-package com.mngraves.breakaway;
+package com.mngraves.breakout;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -13,8 +13,8 @@ public class GamePlayActivity extends Activity{
 	private GameWorld mGameWorld;
 	private Timer mGameUpdateTimer;
 	
-	public static final int GAME_UPDATE_INTERVAL = 100;
-	public static final int NORMAL_BALL_RADIUS = 20;
+	public static final int GAME_UPDATE_INTERVAL = 50;
+	public static final int NORMAL_BALL_RADIUS = 10;
 	
 	public void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
@@ -31,7 +31,7 @@ public class GamePlayActivity extends Activity{
 	
 	private void initializeGameWorld(){
 		mGameWorld = GameWorld.getInstance();
-		mGameWorld.create();
+		mGameWorld.create(mGamePlayView.getScreenBounds());
 		//mGameWorld.addBall();
 	}
 	

@@ -1,4 +1,4 @@
-package com.mngraves.breakaway;
+package com.mngraves.breakout;
 
 import android.app.Activity;
 import android.content.Intent;
