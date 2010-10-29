@@ -3,10 +3,16 @@ package com.mngraves.breakout;
 import org.jbox2d.collision.AABB;
 import org.jbox2d.collision.shapes.CircleDef;
 import org.jbox2d.collision.shapes.PolygonDef;
+import org.jbox2d.collision.shapes.Shape;
 import org.jbox2d.common.Vec2;
+import org.jbox2d.common.XForm;
 import org.jbox2d.dynamics.Body;
 import org.jbox2d.dynamics.BodyDef;
+import org.jbox2d.dynamics.ContactListener;
+import org.jbox2d.dynamics.Steppable;
 import org.jbox2d.dynamics.World;
+import org.jbox2d.dynamics.contacts.ContactPoint;
+import org.jbox2d.dynamics.contacts.ContactResult;
 
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -22,10 +28,13 @@ import android.util.Log;
 public final class GameWorld {
     public static final int PIXELS_IN_METER = 30;
     
-    public float mTimeStep = ((float)1.0 / (float)30.0);
+    public float mTimeStep = (1.0f / 30.0f);
     public int mIterations = 6;
-
+    
+    private Body[] mMapBlocks;
     private Body mBall;
+    private Body mDeadBlock;
+    private Body mSlider;
     private Rect mScreenBounds;
     private float mScreenWidth;
     private float mScreenHeight;
@@ -45,14 +54,56 @@ public final class GameWorld {
     	return mInstance;
     }
     
+    /**
+     * Create the game slider
+     */
+    private void createSlider(){
+		Bundle data = new Bundle();
+		data.putInt(GamePlayActivity.KEY_WIDTH, GamePlayActivity.SLIDER_WIDTH);
+		data.putInt(GamePlayActivity.KEY_HEIGHT, GamePlayActivity.SLIDER_DEPTH);
+		data.putInt(GamePlayActivity.KEY_X, GamePlayActivity.SLIDER_DEFAULT_X);
+		data.putInt(GamePlayActivity.KEY_Y, mScreenBounds.height() - GamePlayActivity.SLIDER_Y_OFFSET);
+		data.putInt(GamePlayActivity.KEY_BOX_COLOR, GamePlayActivity.SLIDER_COLOR);
+		mSlider = addBox(data);    	
+    }
+    
+    /**
+     * Update the slider x axis according to control input
+     * @param x the center of the slider
+     */
+    public synchronized void updateSliderPosition(int x){
+    	float locX = xToBox(x);
+    	/**
+    	 * Correct the coordinate to reflect left edge of slider
+    	 */
+    	x -= Math.round((GamePlayActivity.SLIDER_WIDTH/2));
+    	
+    	if(mSlider == null){
+    		createSlider();
+    	}
+    	XForm xform = mSlider.getXForm();
+    	Log.d(TAG, "Old slider X: " + xform.position.x);
+    	xform.position.x = locX;
+    	Log.d(TAG, "New slider X: " + xform.position.x);
+    	mSlider.setXForm(xform.position, 0);
+    	/**
+    	 * Save updated coordinate to the user data
+    	 */
+    	Bundle data = (Bundle)mSlider.getUserData();
+    	data.putInt(GamePlayActivity.KEY_X, x);
+    	Log.d(TAG, "saving the new X pixel coordinate: " + x);
+    	mSlider.setUserData(data);
+    }
+    
+    
     public void create(Rect bounds) {
     	mScreenBounds = bounds;
     	
     	/*
     	 * Scale screen dimensions to meters
     	 */
-    	mScreenWidth = ((float)bounds.width() / (float)PIXELS_IN_METER)/(float)2.0;
-    	mScreenHeight = ((float)bounds.height() / (float)PIXELS_IN_METER)/(float)2.0;
+    	mScreenWidth = ((float)bounds.width() / (float)PIXELS_IN_METER)/2.0f;
+    	mScreenHeight = ((float)bounds.height() / (float)PIXELS_IN_METER)/2.0f;
     	
     	Log.d(TAG, "Screen width: " + mScreenWidth);
     	Log.d(TAG, "Screen height: " + mScreenHeight);
@@ -67,10 +118,21 @@ public final class GameWorld {
         Log.d(TAG, "World AABB is valid: " + mWorldAABB.isValid());
 
         // Step 2: Create Physics World with Gravity
-        Vec2 gravity = new Vec2((float) 0.0, (float)0.0);
+        Vec2 gravity = new Vec2(0.0f, 0.0f);
         boolean doSleep = true;
-        mWorld = new World(mWorldAABB, gravity, doSleep); 
-        
+        mWorld = new World(mWorldAABB, gravity, doSleep);
+        mWorld.setContactListener(new BreakoutContactListener());
+        mWorld.registerPostStep(new Steppable() {
+			
+			@Override
+			public void step(float dt, int iterations) {
+				if(mDeadBlock != null){
+					mWorld.destroyBody(mDeadBlock);
+					mDeadBlock = null;
+					Log.d(TAG, "DESTROYED!!!");
+				}
+			}
+		});
         createTopBox();
         createRightBox();
         //createBottomBox();
@@ -79,43 +141,43 @@ public final class GameWorld {
     
     private void createTopBox(){
         BodyDef topBodyDef = new BodyDef();
-        topBodyDef.position.set(new Vec2((float)0.0, -(mScreenHeight+(float)2.0)));
+        topBodyDef.position.set(new Vec2(0.0f, -(mScreenHeight+2.0f)));
         Body topBody = mWorld.createBody(topBodyDef);
         PolygonDef topShapeDef = new PolygonDef();
-        topShapeDef.setAsBox(mScreenWidth*(float)2.0, (float)2.1);
-        topBody.createShape(topShapeDef);    	
+        topShapeDef.setAsBox(mScreenWidth*2.0f, 2.1f);
+        topBody.createShape(topShapeDef);
     }
 
     private void createBottomBox(){
         BodyDef bottomBodyDef = new BodyDef();
-        bottomBodyDef.position.set(new Vec2((float)0.0, (mScreenHeight+(float)2.0)));
+        bottomBodyDef.position.set(new Vec2(0.0f, (mScreenHeight+2.0f)));
         Body bottomBody = mWorld.createBody(bottomBodyDef);
         PolygonDef bottomShapeDef = new PolygonDef();
-        bottomShapeDef.setAsBox(mScreenWidth*(float)2.0, (float)2.1);
+        bottomShapeDef.setAsBox(mScreenWidth*2.0f, 2.1f);
         bottomBody.createShape(bottomShapeDef);    	
     }
     
     private void createRightBox(){
         BodyDef rightBodyDef = new BodyDef();
-        rightBodyDef.position.set(new Vec2(mScreenWidth+(float)2.0, (float)0.0));
+        rightBodyDef.position.set(new Vec2(mScreenWidth+2.0f, 0.0f));
         Body rightBody = mWorld.createBody(rightBodyDef);
         PolygonDef rightShapeDef = new PolygonDef();
-        rightShapeDef.setAsBox((float)2.1, mScreenHeight*(float)2.0);
+        rightShapeDef.setAsBox(2.1f, mScreenHeight*2.0f);
         rightBody.createShape(rightShapeDef);    	
     }
     
     private void createLeftBox(){
         BodyDef leftBodyDef = new BodyDef();
-        leftBodyDef.position.set(new Vec2(-(mScreenWidth+(float)2.0), (float)0.0));
+        leftBodyDef.position.set(new Vec2(-(mScreenWidth+2.0f), 0.0f));
         Body leftBody = mWorld.createBody(leftBodyDef);
         PolygonDef leftShapeDef = new PolygonDef();
-        leftShapeDef.setAsBox((float)2.1, mScreenHeight*(float)2.0);
+        leftShapeDef.setAsBox(2.1f, mScreenHeight*2.0f);
         leftBody.createShape(leftShapeDef);    	
     }
     
-    public void addBox(Bundle data){
-    	float width = ((float)data.getInt(GamePlayActivity.KEY_WIDTH)/(float)PIXELS_IN_METER)/(float)2.0;
-    	float height = ((float)data.getInt(GamePlayActivity.KEY_HEIGHT)/(float)PIXELS_IN_METER)/(float)2.0;
+    public Body addBox(Bundle data){
+    	float width = ((float)data.getInt(GamePlayActivity.KEY_WIDTH)/(float)PIXELS_IN_METER)/2.0f;
+    	float height = ((float)data.getInt(GamePlayActivity.KEY_HEIGHT)/(float)PIXELS_IN_METER)/2.0f;
     	float locX = xToBox(data.getInt(GamePlayActivity.KEY_X) + Math.round(data.getInt(GamePlayActivity.KEY_WIDTH)/2));
     	float locY = yToBox(data.getInt(GamePlayActivity.KEY_Y) + Math.round(data.getInt(GamePlayActivity.KEY_HEIGHT)/2));
     	//locX += (locX > 0) ? (width/2) : -(width/2);
@@ -130,6 +192,32 @@ public final class GameWorld {
         shapeDef.setAsBox(width, height);
         body.createShape(shapeDef);
         body.setUserData(data);
+
+        return body;
+    }
+    
+    /**
+     * Add the map blocks to the world
+     * @param bundles bundles describing the blocks to be added
+     */
+    public void addMapBlocks(Bundle[] bundles){
+    	clearMapBlocks();
+    	mMapBlocks = new Body[bundles.length];
+    	
+    	for(int i = 0; i < bundles.length; i++){
+    		mMapBlocks[i] = addBox(bundles[i]);
+    	}
+    }
+    
+    /**
+     * Remove all map blocks from the world
+     */
+    private void clearMapBlocks(){
+    	if(mMapBlocks != null){
+    		for(int i = 0; i < mMapBlocks.length; i++){
+    			mWorld.destroyBody(mMapBlocks[i]);
+    		}
+    	}
     }
     
     public Body getBodyListHead(){
@@ -159,15 +247,15 @@ public final class GameWorld {
         mBall = mWorld.createBody(bodyDef);
         // Create Shape with Properties
         CircleDef circle = new CircleDef();
-        circle.restitution = (float)1.0;
+        circle.restitution = 1.0f;
         circle.radius = (float)GamePlayActivity.NORMAL_BALL_RADIUS/(float)PIXELS_IN_METER;
-        circle.density = (float) 1.0;
+        circle.density = 1.0f;
         circle.friction = 0;
 
         // Assign shape to Body
         mBall.createShape(circle);
         mBall.setMassFromShapes();
-        mBall.setLinearVelocity(new Vec2((float)25.0, (float)-30.0));
+        mBall.setLinearVelocity(new Vec2(25.0f, -30.0f));
         
         Log.d(TAG, "Ball is dynamic: " + mBall.isDynamic());
         Log.d(TAG, "Ball string: " + mBall.toString());
@@ -260,4 +348,46 @@ public final class GameWorld {
     	}
     	return false;
     }
+    
+    
+    /**
+     * Handle collisions with our map objects
+     *
+     */
+    private final class BreakoutContactListener implements ContactListener{
+    	BreakoutContactListener(){
+    		//Log.d(TAG, "constructing listener...");
+    	}
+		@Override
+		public void add(ContactPoint point) {
+			Body body = point.shape1.m_body.isDynamic() ? point.shape2.m_body : point.shape1.m_body;
+			Bundle data = (Bundle)body.getUserData();
+			if(data != null){
+				//Log.d(TAG, "add...." + data.toString());
+				if(data.getInt(GamePlayActivity.KEY_BOX_HITPOINTS) == 1){
+					mDeadBlock = body;
+				}
+			}
+		}
+
+		@Override
+		public void persist(ContactPoint point) {
+			//Log.d(TAG, "persist...");
+			
+		}
+
+		@Override
+		public void remove(ContactPoint point) {
+			
+					
+		}
+
+		@Override
+		public void result(ContactResult point) {
+			//Log.d(TAG, "result...");
+			
+		}
+    	
+    }
+    
 }

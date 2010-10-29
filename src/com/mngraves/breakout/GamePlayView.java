@@ -41,12 +41,16 @@ public class GamePlayView extends View implements OnTouchListener{
 	public boolean onTouch(View v, MotionEvent event) {
 		float x = event.getRawX();
 		float y = event.getRawY();
-		
+
 		if(!mGameWorld.isBallInPlay()){
-			mGameWorld.setBall(GamePlayActivity.BALL_START_X, GamePlayActivity.BALL_START_Y);
+			mGameWorld.setBall(GamePlayActivity.BALL_START_X, mScreenBounds.height() - GamePlayActivity.SLIDER_Y_OFFSET);
 		}
-		return false;
+		//Log.d(TAG, "Slider X Coordinate: " + sliderPosition);
+		mGameWorld.updateSliderPosition((int)x);
+		return true;
 	}
+	
+	
 
 	@Override
 	protected void onDraw(Canvas canvas) {
@@ -68,7 +72,9 @@ public class GamePlayView extends View implements OnTouchListener{
 				int y = bodyData.getInt(GamePlayActivity.KEY_Y);
 				int width = bodyData.getInt(GamePlayActivity.KEY_WIDTH);
 				int height = bodyData.getInt(GamePlayActivity.KEY_HEIGHT);
+				int color = bodyData.getInt(GamePlayActivity.KEY_BOX_COLOR);
 				Rect bounds = new Rect(x, y, x+width, y+height);
+				mPaint.setColor(color);
 				canvas.drawRect(bounds, mPaint);
 			}
 			curBody = curBody.getNext();
